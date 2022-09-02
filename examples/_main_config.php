@@ -16,6 +16,7 @@ $session        = new \Symfony\Component\HttpFoundation\Session\Session($session
 $session->start();
 
 $hostUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')."://$_SERVER[HTTP_HOST]";
+$hostUrl = 'https://localhost/packages/pos/examples';
 $subMenu = [];
 
 function getGateway(\Mews\Pos\Entity\Account\AbstractPosAccount $account): ?\Mews\Pos\PosInterface

@@ -227,7 +227,7 @@ class EstPosRequestDataMapper extends AbstractRequestDataMapper
             $inputs['cv2'] = $card->getCvv();
         }
 
-        $inputs['hash'] = $this->create3DHashVer3($account, $inputs);
+        $inputs['hash'] = $this->create3DHash($account, $order, $txType, $inputs);
         return [
             'gateway' => $gatewayURL,
             'inputs'  => $inputs,
@@ -235,38 +235,16 @@ class EstPosRequestDataMapper extends AbstractRequestDataMapper
     }
 
     /**
-     *
-     * @deprecated hashAlgorithm ver3'de hash hesaplaması değiştiği için ver3'de kullanılmamaktadır.
-     * ver3 için store key değişmesi gerekebilir.
-     * @inheritDoc
-     */
-    public function create3DHash(AbstractPosAccount $account, $order, string $txType): string
-    {
-        $hashData = [
-            $account->getClientId(),
-            $order->id,
-            $order->amount,
-            $order->success_url,
-            $order->fail_url,
-            $this->mapTxType($txType),
-            $this->mapInstallment($order->installment),
-            $order->rand,
-            $account->getStoreKey(),
-        ];
-
-        $hashStr = implode(static::HASH_SEPARATOR, $hashData);
-
-        return $this->hashString($hashStr);
-    }
-
-    /**
-     * create 3d hash version 3
+     * hashAlgorithm ver3'e göre 3d hash hesaplama yöntemi güncelleştirildi.
+     * güncelleme sonrası store key değişikliği gerekebilir
      *
      * @param AbstractPosAccount $account
-     * @param $inputs
+     * @param $order
+     * @param string $txType
+     * @param array $inputs
      * @return string
      */
-    public function create3DHashVer3(AbstractPosAccount $account, $inputs): string
+    public function create3DHash(AbstractPosAccount $account, $order, string $txType, array $inputs = []): string
     {
         $inputParams = array_keys($inputs);
         natcasesort($inputParams);

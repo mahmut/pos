@@ -288,14 +288,12 @@ class EstPosRequestDataMapperTest extends TestCase
         $account = $this->threeDAccount;
         $txType = AbstractGateway::TX_PAY;
         $this->pos->prepare($this->order, $txType);
-        $hash       = $this->requestDataMapper->create3DHash($account, $this->pos->getOrder(), $txType);
         $card       = $this->card;
         $gatewayURL = $this->config['banks'][$this->threeDAccount->getBank()]['urls']['gateway']['test'];
 
         $inputs = [
             'clientid'  => $account->getClientId(),
             'storetype' => $account->getModel(),
-            'hash'      => $hash,
             'firmaadi'  => $this->order['name'],
             'Email'     => $this->order['email'],
             'amount'    => $this->order['amount'],
@@ -307,7 +305,10 @@ class EstPosRequestDataMapperTest extends TestCase
             'currency'  => 949,
             'islemtipi' => 'Auth',
             'taksit'    => '',
+            'hashAlgorithm' => 'ver3'
         ];
+
+        $inputs['hash'] = $this->requestDataMapper->create3DHashVer3($account, $inputs);
         $form   = [
             'gateway' => $gatewayURL,
             'inputs'  => $inputs,
@@ -359,12 +360,10 @@ class EstPosRequestDataMapperTest extends TestCase
         $pos->setTestMode(true);
         $pos->prepare($this->order, AbstractGateway::TX_PAY);
         $order      = $pos->getOrder();
-        $hash       = $this->requestDataMapper->create3DHash($account, $order, AbstractGateway::TX_PAY);
         $gatewayURL = $this->config['banks'][$this->threeDAccount->getBank()]['urls']['gateway_3d_host']['test'];
         $inputs     = [
             'clientid'  => $account->getClientId(),
             'storetype' => $account->getModel(),
-            'hash'      => $hash,
             'firmaadi'  => $this->order['name'],
             'Email'     => $this->order['email'],
             'amount'    => $this->order['amount'],
@@ -376,7 +375,10 @@ class EstPosRequestDataMapperTest extends TestCase
             'currency'  => '949',
             'islemtipi'  => 'Auth',
             'taksit'    => '',
+            'hashAlgorithm' => 'ver3'
         ];
+
+        $inputs['hash'] = $this->requestDataMapper->create3DHashVer3($account, $inputs);
         $form       = [
             'gateway' => $gatewayURL,
             'inputs'  => $inputs,
