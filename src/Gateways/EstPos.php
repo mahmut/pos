@@ -19,6 +19,20 @@ use Symfony\Component\HttpFoundation\Request;
 class EstPos extends AbstractGateway
 {
     /**
+     * hash algorithm ver3
+     *
+     * @const string
+     */
+    protected const HASH_ALGORITHM = 'sha512';
+
+    /**
+     * hash separator
+     *
+     * @const string
+     */
+    protected const HASH_SEPARATOR = '|';
+
+    /**
      * @const string
      */
     public const NAME = 'EstPos';
@@ -82,23 +96,23 @@ class EstPos extends AbstractGateway
      */
     public function check3DHash(array $data): bool
     {
-        $hashParams = $data['HASHPARAMS'];
-        $hashParamsVal = $data['HASHPARAMSVAL'];
-        $hashParam = $data['HASH'];
-        $paramsVal = '';
+        $return = false;
 
-        $hashParamsArr = explode(':', $hashParams);
-        foreach ($hashParamsArr as $value) {
-            if (!empty($value) && isset($data[$value])) {
-                $paramsVal = $paramsVal.$data[$value];
+        $postParams = array_keys($data);
+        natcasesort($postParams);
+
+        $hashData = [];
+        foreach($postParams as $param){
+            if(!in_array(strtolower($param), ['hash', 'encoding'])){
+                $hashData[] = str_replace("|", "\\|", str_replace("\\", "\\\\", $data[$param]));
             }
         }
 
-        $hashVal = $paramsVal.$this->account->getStoreKey();
-        $hash = $this->hashString($hashVal);
+        $hashData[] = str_replace("|", "\\|", str_replace("\\", "\\\\", $this->account->getStoreKey()));
+        $hashVal = implode(static::HASH_SEPARATOR, $hashData);
 
-        $return = false;
-        if ($hashParams && !($paramsVal !== $hashParamsVal || $hashParam !== $hash)) {
+        $hash = $this->hashString($hashVal);
+        if($hash == $data['HASH']){
             $return = true;
         }
 
@@ -303,7 +317,9 @@ class EstPos extends AbstractGateway
      */
     protected function map3DPaymentData($raw3DAuthResponseData, $rawPaymentResponseData)
     {
-        $raw3DAuthResponseData = $this->emptyStringsToNull($raw3DAuthResponseData);
+        //
+        // hashAlgorithm ver3'te tüm parametreler hash doğrulamasında kullanılmasından dolayı iptal edilmiştir.
+        //$raw3DAuthResponseData = $this->emptyStringsToNull($raw3DAuthResponseData);
         $paymentResponseData = $this->mapPaymentResponse($rawPaymentResponseData);
 
         $threeDResponse = [
@@ -312,8 +328,8 @@ class EstPos extends AbstractGateway
             'hash'                 => $raw3DAuthResponseData['HASH'],
             'order_id'             => $raw3DAuthResponseData['oid'],
             'rand'                 => $raw3DAuthResponseData['rnd'],
-            'hash_params'          => $raw3DAuthResponseData['HASHPARAMS'],
-            'hash_params_val'      => $raw3DAuthResponseData['HASHPARAMSVAL'],
+            'hash_params'          => $raw3DAuthResponseData['HASHPARAMS'] ?? null,
+            'hash_params_val'      => $raw3DAuthResponseData['HASHPARAMSVAL'] ?? null,
             'masked_number'        => $raw3DAuthResponseData['maskedCreditCard'],
             'month'                => $raw3DAuthResponseData['Ecom_Payment_Card_ExpDate_Month'],
             'year'                 => $raw3DAuthResponseData['Ecom_Payment_Card_ExpDate_Year'],
@@ -343,13 +359,17 @@ class EstPos extends AbstractGateway
     {
         $status = 'declined';
 
-        $raw3DAuthResponseData = $this->emptyStringsToNull($raw3DAuthResponseData);
+        //
+        // hashAlgorithm ver3'te tüm parametreler hash doğrulamasında kullanılmasından dolayı iptal edilmiştir.
+        //$raw3DAuthResponseData = $this->emptyStringsToNull($raw3DAuthResponseData);
+
         $procReturnCode = $this->getProcReturnCode($raw3DAuthResponseData);
         if ($this->check3DHash($raw3DAuthResponseData) && '00' === $procReturnCode) {
             if (in_array($raw3DAuthResponseData['mdStatus'], ['1', '2', '3', '4'])) {
                 $status = 'approved';
             }
         }
+
 
         $defaultResponse = $this->getDefaultPaymentResponse();
 
@@ -360,8 +380,8 @@ class EstPos extends AbstractGateway
             'status'               => $status,
             'hash'                 => $raw3DAuthResponseData['HASH'],
             'rand'                 => $raw3DAuthResponseData['rnd'],
-            'hash_params'          => $raw3DAuthResponseData['HASHPARAMS'],
-            'hash_params_val'      => $raw3DAuthResponseData['HASHPARAMSVAL'],
+            'hash_params'          => $raw3DAuthResponseData['HASHPARAMS'] ?? null,
+            'hash_params_val'      => $raw3DAuthResponseData['HASHPARAMSVAL'] ?? null,
             'masked_number'        => $raw3DAuthResponseData['maskedCreditCard'],
             'month'                => $raw3DAuthResponseData['Ecom_Payment_Card_ExpDate_Month'],
             'year'                 => $raw3DAuthResponseData['Ecom_Payment_Card_ExpDate_Year'],
@@ -400,7 +420,9 @@ class EstPos extends AbstractGateway
      */
     protected function map3DHostResponseData(array $raw3DAuthResponseData): array
     {
-        $raw3DAuthResponseData = $this->emptyStringsToNull($raw3DAuthResponseData);
+        //
+        // hashAlgorithm ver3'te tüm parametreler hash doğrulamasında kullanılmasından dolayı iptal edilmiştir.
+        // $raw3DAuthResponseData = $this->emptyStringsToNull($raw3DAuthResponseData);
         $status = 'declined';
 
         if ($this->check3DHash($raw3DAuthResponseData)) {
@@ -418,8 +440,8 @@ class EstPos extends AbstractGateway
             'status'               => $status,
             'hash'                 => $raw3DAuthResponseData['HASH'],
             'rand'                 => $raw3DAuthResponseData['rnd'],
-            'hash_params'          => $raw3DAuthResponseData['HASHPARAMS'],
-            'hash_params_val'      => $raw3DAuthResponseData['HASHPARAMSVAL'],
+            'hash_params'          => $raw3DAuthResponseData['HASHPARAMS'] ?? null,
+            'hash_params_val'      => $raw3DAuthResponseData['HASHPARAMSVAL'] ?? null,
             'masked_number'        => $raw3DAuthResponseData['maskedCreditCard'],
             'month'                => $raw3DAuthResponseData['Ecom_Payment_Card_ExpDate_Month'],
             'year'                 => $raw3DAuthResponseData['Ecom_Payment_Card_ExpDate_Year'],

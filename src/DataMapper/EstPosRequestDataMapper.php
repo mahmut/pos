@@ -18,6 +18,20 @@ class EstPosRequestDataMapper extends AbstractRequestDataMapper
     public const CREDIT_CARD_EXP_YEAR_FORMAT = 'y';
 
     /**
+     * hash algorithm ver3
+     *
+     * @const string
+     */
+    protected const HASH_ALGORITHM = 'sha512';
+
+    /**
+     * hash separator
+     *
+     * @const string
+     */
+    protected const HASH_SEPARATOR = '|';
+
+    /**
      * @inheritdoc
      */
     protected $txTypeMappings = [
@@ -188,12 +202,9 @@ class EstPosRequestDataMapper extends AbstractRequestDataMapper
      */
     public function create3DFormData(AbstractPosAccount $account, $order, string $txType, string $gatewayURL, ?AbstractCreditCard $card = null): array
     {
-        $hash = $this->create3DHash($account, $order, $txType);
-
         $inputs = [
             'clientid'  => $account->getClientId(),
             'storetype' => $this->secureTypeMappings[$account->getModel()],
-            'hash'      => $hash,
             'firmaadi'  => $order->name,
             'Email'     => $order->email,
             'amount'    => $order->amount,
@@ -205,6 +216,7 @@ class EstPosRequestDataMapper extends AbstractRequestDataMapper
             'currency'  => $this->mapCurrency($order->currency),
             'taksit'    => $this->mapInstallment($order->installment),
             'islemtipi' => $this->mapTxType($txType),
+            'hashAlgorithm' => 'ver3'
         ];
 
         if ($card) {
@@ -215,6 +227,7 @@ class EstPosRequestDataMapper extends AbstractRequestDataMapper
             $inputs['cv2'] = $card->getCvv();
         }
 
+        $inputs['hash'] = $this->create3DHashVer3($account, $inputs);
         return [
             'gateway' => $gatewayURL,
             'inputs'  => $inputs,
@@ -222,6 +235,9 @@ class EstPosRequestDataMapper extends AbstractRequestDataMapper
     }
 
     /**
+     *
+     * @deprecated hashAlgorithm ver3'de hash hesaplaması değiştiği için ver3'de kullanılmamaktadır.
+     * ver3 için store key değişmesi gerekebilir.
      * @inheritDoc
      */
     public function create3DHash(AbstractPosAccount $account, $order, string $txType): string
@@ -240,6 +256,30 @@ class EstPosRequestDataMapper extends AbstractRequestDataMapper
 
         $hashStr = implode(static::HASH_SEPARATOR, $hashData);
 
+        return $this->hashString($hashStr);
+    }
+
+    /**
+     * create 3d hash version 3
+     *
+     * @param AbstractPosAccount $account
+     * @param $inputs
+     * @return string
+     */
+    public function create3DHashVer3(AbstractPosAccount $account, $inputs): string
+    {
+        $inputParams = array_keys($inputs);
+        natcasesort($inputParams);
+
+        $hashData = [];
+        foreach($inputParams as $param){
+            if(!in_array(strtolower($param), ['hash', 'encoding'])){
+                $hashData[] = str_replace("|", "\\|", str_replace("\\", "\\\\", $inputs[$param]));
+            }
+        }
+
+        $hashData[] = str_replace("|", "\\|", str_replace("\\", "\\\\", $account->getStoreKey()));
+        $hashStr = implode(static::HASH_SEPARATOR, $hashData);
         return $this->hashString($hashStr);
     }
 
